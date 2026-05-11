@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cambio-moneda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* === TOKENS === */
+    :root {
+      --bg: #020617;
+      --card: #0F172A;
+      --card2: #1E293B;
+      --green: #22C55E;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --border: #1E293B;
+      --blue: #3B82F6;
+      --red: #EF4444;
+    }
+
+    /* === RESET === */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Fira Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+    }
+
+    /* === HEADER === */
+    header {
+      width: 100%;
+      max-width: 680px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    header h1 {
+      font-family: 'Fira Code', monospace;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    header h1 span { color: var(--green); }
+    header p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* === GRID === */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 680px;
+    }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* === CARD === */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: border-color 200ms ease;
+    }
+    .card:focus-within { border-color: rgba(34,197,94,.5); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card-header img {
+      width: 28px;
+      height: 20px;
+      border-radius: 3px;
+      object-fit: cover;
+    }
+    .currency-label {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .currency-name {
+      font-size: 0.72rem;
+      color: var(--muted);
+      opacity: 0.55;
+      margin-left: auto;
+    }
+
+    /* === INPUT === */
+    .currency-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Fira Code', monospace;
+      font-size: 2.5rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+      padding: 0;
+      -moz-appearance: textfield;
+    }
+    .currency-input::-webkit-outer-spin-button,
+    .currency-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .currency-input::placeholder { color: rgba(248,250,252,.18); }
+    .currency-input:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .rate-ref {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 12px;
+      font-family: 'Fira Sans', sans-serif;
+      opacity: 0.65;
+    }
+
+    /* === ACTIONS === */
+    .actions {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .btn-refresh {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green);
+      color: #020617;
+      font-family: 'Fira Sans', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 700;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+    .btn-refresh:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .btn-refresh:focus { outline: 2px solid var(--green); outline-offset: 2px; }
+    .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
+
+    .last-update {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* === SPINNER === */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(2,6,23,.25);
+      border-top-color: #020617;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* === ERROR === */
+    .error-msg {
+      width: 100%;
+      max-width: 680px;
+      margin-top: 12px;
+      padding: 10px 16px;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px;
+      color: #F87171;
+      font-size: 0.8rem;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    /* === FOOTER === */
+    footer { margin-top: auto; padding-top: 56px; text-align: center; }
+
+    /* === MFLOWSUITE BADGE === */
+    #hl-pw-scene { position: relative; display: inline-block; margin-top: .75rem; }
+    #hl-pw-row { display: inline-flex; align-items: center; font-family: 'Fira Sans', sans-serif; font-size: 11px; font-weight: 600; white-space: nowrap; color: rgba(255,255,255,.55); }
+    .hl-pw-by { color: rgba(255,255,255,.3); }
+    #hl-pw-slot { display: inline-block; width: 28px; height: 28px; margin: 0 5px; vertical-align: middle; flex-shrink: 0; }
+    #hl-pw-logo { position: absolute; top: 0; left: 0; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; pointer-events: none; }
+    #hl-pw-chars .pw-ch { display: inline-block; }
+    #hl-pw-logo.pw-glow { filter: drop-shadow(0 0 6px rgba(59,130,246,.9)); }
+    .hl-pw-wrap { text-align: center; padding: 12px 0 4px; }
+
+    /* === REDUCED MOTION === */
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation: none; opacity: .6; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>cambio-<span>moneda</span></h1>
+    <p>Convertidor AED · USD · ARS (blue) · ILS</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- AED -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/ae.png" alt="UAE">
+        <span class="currency-label">AED</span>
+        <span class="currency-name">Dírham</span>
+      </div>
+      <input id="input-AED" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-AED">Cargando…</p>
+    </div>
+
+    <!-- USD -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/us.png" alt="USA">
+        <span class="currency-label">USD</span>
+        <span class="currency-name">Dólar</span>
+      </div>
+      <input id="input-USD" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-USD">1 USD = 1 USD</p>
+    </div>
+
+    <!-- ARS -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/ar.png" alt="Argentina">
+        <span class="currency-label">ARS</span>
+        <span class="currency-name">Peso (blue)</span>
+      </div>
+      <input id="input-ARS" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-ARS">Cargando…</p>
+    </div>
+
+    <!-- ILS -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/il.png" alt="Israel">
+        <span class="currency-label">ILS</span>
+        <span class="currency-name">Shekel</span>
+      </div>
+      <input id="input-ILS" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-ILS">Cargando…</p>
+    </div>
+
+  </div>
+
+  <div class="actions">
+    <button class="btn-refresh" id="btn-refresh" disabled>
+      <svg id="icon-refresh" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+        <path d="M16 16h5v5"/>
+      </svg>
+      <span id="spinner-el" class="spinner"></span>
+      Actualizar tasas
+    </button>
+    <span class="last-update" id="last-update"></span>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <footer>
+    <div class="hl-pw-wrap">
+      <a href="https://mflowsuite.com/" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block;">
+        <div id="hl-pw-scene">
+          <div id="hl-pw-row" style="opacity:0;">
+            <span class="hl-pw-by">Powered by&nbsp;</span>
+            <span id="hl-pw-slot"></span>
+            <span id="hl-pw-chars"></span>
+          </div>
+          <img id="hl-pw-logo" src="https://reviews.mflowsuite.com/assets/mflowsuite-logo.png" alt="MflowSuite">
+        </div>
+      </a>
+    </div>
+  </footer>
+
+  <script>
+    // === STATE ===
+    const rates = { AED: null, USD: 1, ARS: null, ILS: null };
+    const CURRENCIES = ['AED', 'USD', 'ARS', 'ILS'];
+
+    // === DOM REFS ===
+    const inputs = {};
+    const refs = {};
+    CURRENCIES.forEach(c => {
+      inputs[c] = document.getElementById('input-' + c);
+      refs[c]   = document.getElementById('ref-' + c);
+    });
+    const btnRefresh   = document.getElementById('btn-refresh');
+    const iconRefresh  = document.getElementById('icon-refresh');
+    const spinnerEl    = document.getElementById('spinner-el');
+    const lastUpdateEl = document.getElementById('last-update');
+    const errorMsgEl   = document.getElementById('error-msg');
+
+    // === API ===
+    async function fetchRates() {
+      const [blueRes, fxRes] = await Promise.all([
+        fetch('https://api.bluelytics.com.ar/v2/latest'),
+        fetch('https://open.er-api.com/v6/latest/USD')
+      ]);
+      if (!blueRes.ok) throw new Error('Error al obtener dólar blue (bluelytics)');
+      if (!fxRes.ok)   throw new Error('Error al obtener tasas FX (open.er-api)');
+      const [blueData, fxData] = await Promise.all([blueRes.json(), fxRes.json()]);
+      rates.ARS = blueData.blue.value_sell;
+      rates.AED = fxData.rates.AED;
+      rates.ILS = fxData.rates.ILS;
+      rates.USD = 1;
+    }
+
+    // === CONVERSION ===
+    function convert(source) {
+      const raw = parseFloat(inputs[source].value);
+      if (!raw || isNaN(raw) || raw <= 0) {
+        CURRENCIES.forEach(c => { if (c !== source) inputs[c].value = ''; });
+        return;
+      }
+      const valueUSD = raw / rates[source];
+      CURRENCIES.forEach(c => {
+        if (c === source) return;
+        inputs[c].value = (valueUSD * rates[c]).toFixed(2);
+      });
+    }
+
+    // === RATE REFS ===
+    function updateRateRefs() {
+      refs.AED.textContent = rates.AED.toFixed(4) + ' AED = 1 USD';
+      refs.USD.textContent = '1 USD = 1 USD';
+      refs.ARS.textContent = rates.ARS.toFixed(2) + ' ARS = 1 USD (blue venta)';
+      refs.ILS.textContent = rates.ILS.toFixed(4) + ' ILS = 1 USD';
+    }
+
+    // === INPUT HANDLERS ===
+    CURRENCIES.forEach(c => {
+      inputs[c].addEventListener('input', () => {
+        if (!rates.AED || !rates.ARS || !rates.ILS) return;
+        convert(c);
+      });
+    });
+
+    // === LOADING STATE ===
+    function setLoading(loading) {
+      btnRefresh.disabled = loading;
+      iconRefresh.style.display = loading ? 'none' : '';
+      spinnerEl.style.display   = loading ? ''     : 'none';
+    }
+
+    // === ERROR STATE ===
+    function showError(msg) {
+      errorMsgEl.textContent = msg;
+      errorMsgEl.classList.add('show');
+      CURRENCIES.forEach(c => { inputs[c].disabled = true; });
+    }
+
+    function clearError() {
+      errorMsgEl.classList.remove('show');
+      CURRENCIES.forEach(c => { inputs[c].disabled = false; });
+    }
+
+    // === REFRESH ===
+    async function refresh() {
+      setLoading(true);
+      clearError();
+      try {
+        await fetchRates();
+        updateRateRefs();
+        const activeSource = CURRENCIES.find(c => inputs[c].value && parseFloat(inputs[c].value) > 0);
+        if (activeSource) convert(activeSource);
+        const now = new Date();
+        lastUpdateEl.textContent = 'Actualizado ' + now.toLocaleTimeString('es-AR');
+      } catch (err) {
+        showError('No se pudo conectar: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    btnRefresh.addEventListener('click', refresh);
+
+    // === INIT ===
+    refresh();
+
+    // === MFLOWSUITE BADGE ===
+    setTimeout(function() {
+      var BRAND='MflowSuite', LS=28, HD=290, FHD=680, SQD=480, LSQ=500, ID=650, THR=0.2;
+      var scene=document.getElementById('hl-pw-scene'),
+          row=document.getElementById('hl-pw-row'),
+          charsEl=document.getElementById('hl-pw-chars'),
+          slotEl=document.getElementById('hl-pw-slot'),
+          logo=document.getElementById('hl-pw-logo');
+      if(!scene||!row||!charsEl||!slotEl||!logo) return;
+      var spans=[];
+      for(var i=0;i<BRAND.length;i++){
+        var s=document.createElement('span');
+        s.className='pw-ch'; s.textContent=BRAND[i];
+        s.style.color='rgba(255,255,255,.55)'; s.style.fontWeight='600';
+        charsEl.appendChild(s); spans.push(s);
+      }
+      var lerp=function(a,b,t){return a+(b-a)*t;};
+      var clamp=function(v,a,b){return Math.max(a,Math.min(b,v));};
+      var arc=function(t,h){return 4*h*t*(1-t);};
+      function spring(t){
+        if(t<.15){var r=t/.15; return[lerp(1,1.35,r),lerp(1,.55,r)];}
+        if(t<.40){var r=(t-.15)/.25; return[lerp(1.35,.88,r),lerp(.55,1.22,r)];}
+        if(t<.70){var r=(t-.40)/.30; return[lerp(.88,1.04,r),lerp(1.22,.96,r)];}
+        var r=(t-.70)/.30; return[lerp(1.04,1,r),lerp(.96,1,r)];
+      }
+      function air(t){
+        if(t<.45) return[lerp(1,.84,t/.45),lerp(1,1.2,t/.45)];
+        if(t<.82) return[.84,1.2];
+        var r=(t-.82)/.18; return[lerp(.84,1.28,r),lerp(1.2,.68,r)];
+      }
+      function ctr(el){
+        var er=el.getBoundingClientRect(),sr=scene.getBoundingClientRect();
+        return{x:er.left-sr.left+er.width/2,y:er.top-sr.top+er.height/2};
+      }
+      function mv(cx,cy,sx,sy,rot,a){
+        logo.style.transform='translate('+(cx-LS/2)+'px,'+(cy-LS/2)+'px) rotate('+rot+'rad) scale('+sx+','+sy+')';
+        logo.style.opacity=a;
+      }
+      var phase='intro',t0=null,idx=0,hop=null,done=false;
+      var lpos=[],spos=null;
+      var lsq=spans.map(function(){return{at:-1};});
+      var lsqAt=-1,lsX=1,lsY=1;
+      function uLS(now){
+        for(var i=0;i<spans.length;i++){
+          if(lsq[i].at<0) continue;
+          var t=clamp((now-lsq[i].at)/SQD,0,1),res=spring(t);
+          spans[i].style.transform='scaleX('+res[0]+') scaleY('+res[1]+')';
+          spans[i].style.color=t<.28?'#6fa8ff':'rgba(255,255,255,.55)';
+          if(t>=1){lsq[i].at=-1;spans[i].style.transform='';spans[i].style.color='';}
+        }
+      }
+      function uLogo(now){
+        if(lsqAt<0) return;
+        var t=clamp((now-lsqAt)/LSQ,0,1),res=spring(t);
+        lsX=res[0];lsY=res[1];
+        if(t>=1){lsqAt=-1;lsX=lsY=1;}
+      }
+      function tLogo(now){lsqAt=now;lsX=1.3;lsY=0.62;}
+      function sh(from,to,h,dur,now){hop={from:{x:from.x,y:from.y},to:{x:to.x,y:to.y},h:h,dur:dur,t0:now};}
+      function frame(now){
+        if(!t0) t0=now;
+        uLS(now);uLogo(now);
+        if(phase==='intro'){
+          var t=clamp((now-t0)/ID,0,1);
+          row.style.opacity=t; mv(-200,0,1,1,0,0);
+          if(t>=1){
+            lpos=spans.map(ctr);spos=ctr(slotEl);
+            var li=spans.length-1;
+            phase='hop';idx=li;t0=now;
+            sh({x:lpos[li].x+55,y:spos.y},{x:lpos[li].x,y:spos.y},40,HD,now);
+          }
+        } else if(phase==='hop'){
+          if(hop){
+            var ht=clamp((now-hop.t0)/hop.dur,0,1);
+            var lx=lerp(hop.from.x,hop.to.x,ht);
+            var ly=lerp(hop.from.y,hop.to.y,ht)-arc(ht,hop.h);
+            var rot=(ht<0.5?1:-1)*Math.sin(Math.PI*ht)*0.22;
+            var sh2=lsqAt>=0?[lsX,lsY]:air(ht);
+            mv(lx,ly,sh2[0],sh2[1],rot,1);
+            if(ht>=1){
+              lsq[idx].at=now;tLogo(now);
+              var fx=hop.to.x,fy=hop.to.y;idx--;
+              if(idx>=0){sh({x:fx,y:fy},{x:lpos[idx].x,y:spos.y},40,HD,now);}
+              else{phase='final';t0=now;sh({x:fx,y:fy},{x:spos.x,y:spos.y},70,FHD,now);}
+            }
+          }
+        } else if(phase==='final'){
+          if(hop){
+            var ht=clamp((now-hop.t0)/hop.dur,0,1);
+            var lx=lerp(hop.from.x,hop.to.x,ht);
+            var ly=lerp(hop.from.y,hop.to.y,ht)-arc(ht,hop.h);
+            var rot=(ht<0.5?1:-1)*Math.sin(Math.PI*ht)*0.18;
+            var sh2=lsqAt>=0?[lsX,lsY]:air(ht);
+            mv(lx,ly,sh2[0],sh2[1],rot,1);
+            if(ht>=1){phase='done';tLogo(now);mv(spos.x,spos.y,lsX,lsY,0,1);logo.classList.add('pw-glow');}
+          }
+        } else if(phase==='done'){
+          mv(spos.x,spos.y,lsX,lsY,0,1);
+          if(!done){done=true;return;}
+          return;
+        }
+        requestAnimationFrame(frame);
+      }
+      var started=false;
+      function start(){if(started)return;started=true;row.style.opacity='0';mv(-200,0,1,1,0,0);requestAnimationFrame(frame);}
+      function init(){
+        var obs=new IntersectionObserver(function(entries){
+          entries.forEach(function(e){if(e.isIntersecting){start();obs.disconnect();}});
+        },{threshold:THR});
+        obs.observe(scene);
+      }
+      if(logo.complete){init();}else{logo.onload=init;logo.onerror=init;setTimeout(init,400);}
+    },100);
+  </script>
+
+</body>
+</html>
