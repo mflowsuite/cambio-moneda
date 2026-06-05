@@ -217,7 +217,7 @@
 
   <header>
     <h1>cambio-<span>moneda</span></h1>
-    <p>Convertidor AED · USD · ARS (blue) · ILS</p>
+    <p>Convertidor AED · USD · ARS (blue) · BRL · ILS</p>
   </header>
 
   <div class="grid">
@@ -253,6 +253,17 @@
       </div>
       <input id="input-ARS" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
       <p class="rate-ref" id="ref-ARS">Cargando…</p>
+    </div>
+
+    <!-- BRL -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/br.png" alt="Brasil">
+        <span class="currency-label">BRL</span>
+        <span class="currency-name">Real</span>
+      </div>
+      <input id="input-BRL" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-BRL">Cargando…</p>
     </div>
 
     <!-- ILS -->
@@ -301,8 +312,8 @@
 
   <script>
     // === STATE ===
-    const rates = { AED: null, USD: 1, ARS: null, ILS: null };
-    const CURRENCIES = ['AED', 'USD', 'ARS', 'ILS'];
+    const rates = { AED: null, USD: 1, ARS: null, BRL: null, ILS: null };
+    const CURRENCIES = ['AED', 'USD', 'ARS', 'BRL', 'ILS'];
 
     // === DOM REFS ===
     const inputs = {};
@@ -328,6 +339,7 @@
       const [blueData, fxData] = await Promise.all([blueRes.json(), fxRes.json()]);
       rates.ARS = blueData.blue.value_sell;
       rates.AED = fxData.rates.AED;
+      rates.BRL = fxData.rates.BRL;
       rates.ILS = fxData.rates.ILS;
       rates.USD = 1;
     }
@@ -351,13 +363,14 @@
       refs.AED.textContent = rates.AED.toFixed(4) + ' AED = 1 USD';
       refs.USD.textContent = '1 USD = 1 USD';
       refs.ARS.textContent = rates.ARS.toFixed(2) + ' ARS = 1 USD (blue venta)';
+      refs.BRL.textContent = rates.BRL.toFixed(4) + ' BRL = 1 USD';
       refs.ILS.textContent = rates.ILS.toFixed(4) + ' ILS = 1 USD';
     }
 
     // === INPUT HANDLERS ===
     CURRENCIES.forEach(c => {
       inputs[c].addEventListener('input', () => {
-        if (!rates.AED || !rates.ARS || !rates.ILS) return;
+        if (!rates.AED || !rates.ARS || !rates.BRL || !rates.ILS) return;
         convert(c);
       });
     });
