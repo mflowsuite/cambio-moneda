@@ -1,0 +1,20 @@
+{
+  "name": "Cambio Moneda",
+  "short_name": "Cambio",
+  "description": "Convertidor AED · USD · EUR · ARS (blue) · BRL · ILS",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "https://reviews.mflowsuite.com/assets/mflowsuite-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

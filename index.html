@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>cambio-moneda</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617">
+  <link rel="icon" href="https://reviews.mflowsuite.com/assets/mflowsuite-logo.png">
+  <link rel="apple-touch-icon" href="https://reviews.mflowsuite.com/assets/mflowsuite-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -217,7 +221,7 @@
 
   <header>
     <h1>cambio-<span>moneda</span></h1>
-    <p>Convertidor AED · USD · ARS (blue) · BRL · ILS</p>
+    <p>Convertidor AED · USD · EUR · ARS (blue) · BRL · ILS</p>
   </header>
 
   <div class="grid">
@@ -242,6 +246,17 @@
       </div>
       <input id="input-USD" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
       <p class="rate-ref" id="ref-USD">1 USD = 1 USD</p>
+    </div>
+
+    <!-- EUR -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/eu.png" alt="Eurozona">
+        <span class="currency-label">EUR</span>
+        <span class="currency-name">Euro</span>
+      </div>
+      <input id="input-EUR" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-EUR">Cargando…</p>
     </div>
 
     <!-- ARS -->
@@ -312,8 +327,9 @@
 
   <script>
     // === STATE ===
-    const rates = { AED: null, USD: 1, ARS: null, BRL: null, ILS: null };
-    const CURRENCIES = ['AED', 'USD', 'ARS', 'BRL', 'ILS'];
+    const rates = { AED: null, USD: 1, EUR: null, ARS: null, BRL: null, ILS: null };
+    const CURRENCIES = ['AED', 'USD', 'EUR', 'ARS', 'BRL', 'ILS'];
+    const CACHE_KEY = 'cambio-moneda-rates-v1';
 
     // === DOM REFS ===
     const inputs = {};
@@ -339,9 +355,30 @@
       const [blueData, fxData] = await Promise.all([blueRes.json(), fxRes.json()]);
       rates.ARS = blueData.blue.value_sell;
       rates.AED = fxData.rates.AED;
+      rates.EUR = fxData.rates.EUR;
       rates.BRL = fxData.rates.BRL;
       rates.ILS = fxData.rates.ILS;
       rates.USD = 1;
+    }
+
+    // === CACHE (localStorage) ===
+    function saveRatesCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          rates: { AED: rates.AED, EUR: rates.EUR, ARS: rates.ARS, BRL: rates.BRL, ILS: rates.ILS },
+          timestamp: Date.now()
+        }));
+      } catch (e) { /* ignore quota / private mode */ }
+    }
+    function loadRatesCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        Object.assign(rates, data.rates);
+        rates.USD = 1;
+        return data.timestamp;
+      } catch (e) { return null; }
     }
 
     // === CONVERSION ===
@@ -362,6 +399,7 @@
     function updateRateRefs() {
       refs.AED.textContent = rates.AED.toFixed(4) + ' AED = 1 USD';
       refs.USD.textContent = '1 USD = 1 USD';
+      refs.EUR.textContent = rates.EUR.toFixed(4) + ' EUR = 1 USD';
       refs.ARS.textContent = rates.ARS.toFixed(2) + ' ARS = 1 USD (blue venta)';
       refs.BRL.textContent = rates.BRL.toFixed(4) + ' BRL = 1 USD';
       refs.ILS.textContent = rates.ILS.toFixed(4) + ' ILS = 1 USD';
@@ -370,7 +408,7 @@
     // === INPUT HANDLERS ===
     CURRENCIES.forEach(c => {
       inputs[c].addEventListener('input', () => {
-        if (!rates.AED || !rates.ARS || !rates.BRL || !rates.ILS) return;
+        if (!rates.AED || !rates.EUR || !rates.ARS || !rates.BRL || !rates.ILS) return;
         convert(c);
       });
     });
@@ -400,19 +438,36 @@
       clearError();
       try {
         await fetchRates();
+        saveRatesCache();
         updateRateRefs();
         const activeSource = CURRENCIES.find(c => inputs[c].value && parseFloat(inputs[c].value) > 0);
         if (activeSource) convert(activeSource);
         const now = new Date();
         lastUpdateEl.textContent = 'Actualizado ' + now.toLocaleTimeString('es-AR');
       } catch (err) {
-        showError('No se pudo conectar: ' + err.message);
+        const cachedTs = loadRatesCache();
+        if (cachedTs && rates.AED && rates.EUR && rates.ARS && rates.BRL && rates.ILS) {
+          updateRateRefs();
+          const activeSource = CURRENCIES.find(c => inputs[c].value && parseFloat(inputs[c].value) > 0);
+          if (activeSource) convert(activeSource);
+          const d = new Date(cachedTs);
+          lastUpdateEl.textContent = 'Offline · cache del ' + d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR');
+        } else {
+          showError('Sin conexión y sin tasas guardadas. Conectate a internet y actualizá.');
+        }
       } finally {
         setLoading(false);
       }
     }
 
     btnRefresh.addEventListener('click', refresh);
+
+    // === SERVICE WORKER (offline app shell) ===
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => { /* SW opcional */ });
+      });
+    }
 
     // === INIT ===
     refresh();
