@@ -1,16 +1,9 @@
-const CACHE = 'cambio-moneda-v3';
+const CACHE = 'cambio-moneda-v4';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap',
-  'https://flagcdn.com/w40/ae.png',
-  'https://flagcdn.com/w40/us.png',
-  'https://flagcdn.com/w40/eu.png',
-  'https://flagcdn.com/w40/ar.png',
-  'https://flagcdn.com/w40/br.png',
-  'https://flagcdn.com/w40/il.png',
-  'https://flagcdn.com/w40/rs.png',
   'https://reviews.mflowsuite.com/assets/mflowsuite-logo.png'
 ];
 

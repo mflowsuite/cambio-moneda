@@ -275,7 +275,6 @@
     <!-- AED -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/ae.png" alt="UAE">
         <span class="currency-label">AED</span>
         <span class="currency-name">Dírham</span>
       </div>
@@ -286,7 +285,6 @@
     <!-- USD -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/us.png" alt="USA">
         <span class="currency-label">USD</span>
         <span class="currency-name">Dólar</span>
       </div>
@@ -297,7 +295,6 @@
     <!-- EUR -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/eu.png" alt="Eurozona">
         <span class="currency-label">EUR</span>
         <span class="currency-name">Euro</span>
       </div>
@@ -308,7 +305,6 @@
     <!-- ARS -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/ar.png" alt="Argentina">
         <span class="currency-label">ARS</span>
         <span class="currency-name">Peso (blue)</span>
       </div>
@@ -319,7 +315,6 @@
     <!-- BRL -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/br.png" alt="Brasil">
         <span class="currency-label">BRL</span>
         <span class="currency-name">Real</span>
       </div>
@@ -330,7 +325,6 @@
     <!-- ILS -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/il.png" alt="Israel">
         <span class="currency-label">ILS</span>
         <span class="currency-name">Shekel</span>
       </div>
@@ -341,7 +335,6 @@
     <!-- RSD -->
     <div class="card">
       <div class="card-header">
-        <img src="https://flagcdn.com/w40/rs.png" alt="Serbia">
         <span class="currency-label">RSD</span>
         <span class="currency-name">Dinar</span>
       </div>
@@ -537,13 +530,14 @@
 
     let visible = loadVisible();
 
+    const DEFAULT_VISIBLE = ['USD', 'AED'];
     function loadVisible() {
       try {
         const raw = localStorage.getItem(VISIBLE_KEY);
-        if (!raw) return new Set(CURRENCIES);
+        if (!raw) return new Set(DEFAULT_VISIBLE);
         const arr = JSON.parse(raw).filter(c => CURRENCIES.includes(c));
-        return new Set(arr.length >= 2 ? arr : CURRENCIES);
-      } catch (e) { return new Set(CURRENCIES); }
+        return new Set(arr.length >= 2 ? arr : DEFAULT_VISIBLE);
+      } catch (e) { return new Set(DEFAULT_VISIBLE); }
     }
     function saveVisible() {
       try { localStorage.setItem(VISIBLE_KEY, JSON.stringify([...visible])); } catch (e) {}
@@ -570,7 +564,7 @@
         btn.className = 'chip';
         btn.id = 'chip-' + c;
         btn.setAttribute('aria-pressed', 'true');
-        btn.innerHTML = '<img src="https://flagcdn.com/w40/' + CURRENCY_META[c].flag + '.png" alt=""> ' + c;
+        btn.textContent = c;
         btn.addEventListener('click', () => toggleCurrency(c));
         selectorEl.appendChild(btn);
       });
