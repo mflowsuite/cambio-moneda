@@ -1,4 +1,4 @@
-const CACHE = 'cambio-moneda-v4';
+const CACHE = 'cambio-moneda-v5';
 const SHELL = [
   './',
   './index.html',

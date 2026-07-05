@@ -225,6 +225,7 @@
       border-radius: 50%;
       animation: spin .7s linear infinite;
       flex-shrink: 0;
+      display: none;
     }
 
     /* === ERROR === */
@@ -528,9 +529,9 @@
     const cards = {};
     CURRENCIES.forEach(c => { cards[c] = inputs[c].closest('.card'); });
 
+    const DEFAULT_VISIBLE = ['USD', 'AED'];
     let visible = loadVisible();
 
-    const DEFAULT_VISIBLE = ['USD', 'AED'];
     function loadVisible() {
       try {
         const raw = localStorage.getItem(VISIBLE_KEY);
