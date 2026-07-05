@@ -1,4 +1,4 @@
-const CACHE = 'cambio-moneda-v5';
+const CACHE = 'cambio-moneda-v6';
 const SHELL = [
   './',
   './index.html',
@@ -21,20 +21,37 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
+  const req = e.request;
+  const url = new URL(req.url);
 
-  // Las APIs de tasas siempre van a la red — no cachear (datos cambian)
+  // No cachear APIs — siempre a la red
   if (url.hostname === 'api.bluelytics.com.ar' || url.hostname === 'open.er-api.com') {
     return;
   }
 
-  // Stale-while-revalidate para el resto (app shell, fonts, banderas, logo)
+  // Network-first para navegación (HTML): siempre traer versión fresca si hay red
+  const isNavigation = req.mode === 'navigate' ||
+    (req.destination === 'document') ||
+    (req.headers.get('accept') || '').includes('text/html');
+
+  if (isNavigation) {
+    e.respondWith(
+      fetch(req).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(req, clone)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate para el resto (fonts, logo, etc.)
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(res => {
+    caches.match(req).then(cached => {
+      const fetchPromise = fetch(req).then(res => {
         if (res && res.status === 200) {
           const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
+          caches.open(CACHE).then(c => c.put(req, clone)).catch(() => {});
         }
         return res;
       }).catch(() => cached);
