@@ -1,6 +1,6 @@
 # cambio-moneda
 
-Convertidor de monedas responsive en tiempo real entre **AED**, **USD**, **EUR**, **ARS** (dólar blue venta), **BRL** e **ILS**. PWA instalable con soporte **offline**. Single-file vanilla HTML/CSS/JS, deployado en GitHub Pages.
+Convertidor de monedas responsive en tiempo real entre **AED**, **USD**, **EUR**, **ARS** (dólar blue venta), **BRL**, **ILS** y **RSD**. Con **selector de monedas visibles** y soporte **offline (PWA)**. Single-file vanilla HTML/CSS/JS, deployado en GitHub Pages.
 
 🌐 **Live:** [mflowsuite.github.io/cambio-moneda](https://mflowsuite.github.io/cambio-moneda/)
 
@@ -8,15 +8,17 @@ Convertidor de monedas responsive en tiempo real entre **AED**, **USD**, **EUR**
 
 ## Características
 
-- **Conversión bidireccional en tiempo real** — al editar cualquier campo, los otros 5 se actualizan instantáneamente
+- **Conversión bidireccional en tiempo real** — al editar cualquier campo, los otros se actualizan instantáneamente
+- **Selector de chips** arriba: elegís cuáles monedas ver, la selección se recuerda
+- **Default minimalista:** al arrancar solo se muestran **USD** y **AED** (mínimo 2 monedas activas)
 - **Dólar blue venta** desde [Bluelytics](https://bluelytics.com.ar/) (sin API key)
-- **AED, EUR, BRL e ILS** desde [open.er-api.com](https://www.exchangerate-api.com/docs/free) (sin API key)
+- **AED, EUR, BRL, ILS, RSD** desde [open.er-api.com](https://www.exchangerate-api.com/docs/free) (sin API key)
 - **Botón "Actualizar tasas"** con spinner, timestamp y manejo de errores
-- **PWA instalable** — `manifest.json` para "Agregar a pantalla de inicio" en mobile/desktop
+- **PWA instalable** — `manifest.json` para "Agregar a pantalla de inicio"
 - **Modo offline** — service worker cachea el app shell + `localStorage` guarda las últimas tasas
 - **Responsive** — grilla 2×2 en tablet/desktop, 1 columna en mobile
 - **Mobile-first** — `inputmode="decimal"` para teclado numérico nativo
-- **Accesible** — `prefers-reduced-motion`, focus visible, sin scroll horizontal
+- **Accesible** — `prefers-reduced-motion`, focus visible, `aria-pressed` en chips, sin scroll horizontal
 - **Zero dependencias** — sin frameworks, sin build process
 
 ---
@@ -29,7 +31,6 @@ Convertidor de monedas responsive en tiempo real entre **AED**, **USD**, **EUR**
 | Offline | Service Worker + Cache API + localStorage |
 | PWA | Web App Manifest |
 | Tipografía | Fira Code · Fira Sans (Google Fonts) |
-| Banderas | [flagcdn.com](https://flagcdn.com/) |
 | Hosting | GitHub Pages |
 | Design system | [MflowSuite](https://mflowsuite.com/) |
 
@@ -40,7 +41,7 @@ Convertidor de monedas responsive en tiempo real entre **AED**, **USD**, **EUR**
 | Dato | API | Endpoint | Campo |
 |------|-----|----------|-------|
 | Dólar blue venta | Bluelytics | `https://api.bluelytics.com.ar/v2/latest` | `blue.value_sell` |
-| AED / EUR / BRL / ILS vs USD | open.er-api | `https://open.er-api.com/v6/latest/USD` | `rates.AED`, `rates.EUR`, `rates.BRL`, `rates.ILS` |
+| AED / EUR / BRL / ILS / RSD vs USD | open.er-api | `https://open.er-api.com/v6/latest/USD` | `rates.AED`, `rates.EUR`, `rates.BRL`, `rates.ILS`, `rates.RSD` |
 
 Ambas se consultan en paralelo con `Promise.all` al cargar la página y en cada click del botón refresh.
 
@@ -51,7 +52,7 @@ Ambas se consultan en paralelo con `Promise.all` al cargar la página y en cada 
 Todas las conversiones pasan por **USD como moneda base**:
 
 ```js
-// rates = { AED: X, USD: 1, EUR: ..., ARS: Y, BRL: Z, ILS: W }
+// rates = { AED: X, USD: 1, EUR: ..., ARS: Y, BRL: Z, ILS: W, RSD: V }
 //   (cada X = cuántas unidades de esa moneda equivalen a 1 USD)
 
 al editar campo C:
@@ -59,6 +60,25 @@ al editar campo C:
   para cada otra moneda M:
     inputs[M].value = (valorUSD * rates[M]).toFixed(2)
 ```
+
+---
+
+## Selector de monedas
+
+Arriba de las cards hay una fila de **chips** — uno por cada moneda soportada. Cada chip actúa como toggle:
+
+- **Verde** → visible
+- **Gris** → oculta
+
+La selección se persiste en `localStorage` bajo la key `cambio-moneda-visible-v1`.
+
+**Reglas:**
+- Default (primer load): `['USD', 'AED']`
+- Mínimo 2 monedas activas — el toggle no permite bajar de 2
+- Al ocultar una moneda, su input se limpia
+- La conversión sigue funcionando internamente para todas las monedas, solo cambia la visibilidad
+
+Para forzar el default, borrar la key en DevTools → Application → Local Storage.
 
 ---
 
@@ -72,7 +92,6 @@ Estrategia **stale-while-revalidate** para el app shell — sirve desde cache y 
 Recursos cacheados al instalar:
 - `index.html`, `manifest.json`
 - Google Fonts (Fira Code, Fira Sans)
-- Banderas SVG/PNG de cada moneda
 - Logo MflowSuite
 
 ### 2. Manifest (`manifest.json`)
@@ -88,6 +107,8 @@ La última consulta exitosa se guarda con timestamp. Si el fetch falla:
 
 Si nunca hubo una consulta exitosa → error rojo pidiendo conexión.
 
+**Requisito:** el primer load tiene que ser con internet para que el SW se instale y las tasas se guarden.
+
 ---
 
 ## Estructura del proyecto
@@ -100,7 +121,7 @@ cambio-moneda/
 ├── .gitignore
 ├── README.md
 └── docs/superpowers/
-    ├── specs/2026-05-11-cambio-moneda-design.md   ← Spec de diseño
+    ├── specs/2026-05-11-cambio-moneda-design.md   ← Spec de diseño inicial
     └── plans/2026-05-11-cambio-moneda.md          ← Plan de implementación
 ```
 
@@ -147,7 +168,7 @@ git commit -m "feat: descripción del cambio"
 git push
 ```
 
-> **Nota PWA:** cuando actualices `sw.js`, incrementá la constante `CACHE` (ej: `v2` → `v3`) para forzar a los browsers a descartar el cache viejo.
+> **Nota PWA:** cuando actualices `sw.js` o el HTML/CSS/JS, incrementá la constante `CACHE` (ej: `v4` → `v5`) para forzar a los browsers a descartar el cache viejo.
 
 ### Setup inicial (ya hecho)
 
@@ -163,18 +184,20 @@ gh api repos/mflowsuite/cambio-moneda/pages \
 
 ## Agregar una moneda nueva
 
-1. **HTML** — duplicar una card existente y cambiar código ISO, nombre, bandera (`flagcdn.com/w40/<código-país>.png`)
-2. **JS** — agregar la moneda en 5 lugares:
+1. **HTML** — duplicar una card existente y cambiar código ISO y nombre
+2. **JS** — agregar la moneda en 6 lugares:
    - `const rates = { ..., XXX: null }`
    - `const CURRENCIES = [..., 'XXX']`
+   - `CURRENCY_META = { ..., XXX: { flag: 'xx', name: '...' } }`
    - `rates.XXX = fxData.rates.XXX` en `fetchRates()`
    - `refs.XXX.textContent = ...` en `updateRateRefs()`
-   - Guard en input handler: `if (!rates.XXX) return`
-   - Guard en fallback offline del `refresh()` `catch`
+   - Guards con la nueva moneda: input handler + fallback offline en `refresh()`
    - Lista de monedas en `saveRatesCache()`
-3. **sw.js** — agregar la URL de la bandera al array `SHELL` e incrementar la versión `CACHE`
-4. **manifest.json** y **README** — actualizar la descripción si corresponde
-5. Verificar que la moneda esté en `open.er-api.com/v6/latest/USD`
+3. **sw.js** — incrementar la versión `CACHE` para invalidar el cache viejo
+4. **README** — actualizar la descripción si corresponde
+5. Verificar que la moneda esté disponible en `open.er-api.com/v6/latest/USD`
+
+El chip se genera automáticamente iterando sobre `CURRENCIES`.
 
 ---
 
@@ -198,11 +221,26 @@ Sin reintentos automáticos — el usuario usa el botón "Actualizar tasas".
 | Single-file HTML | YAGNI — no necesita build, fácil de mantener |
 | USD como moneda base interna | Simplifica de O(n²) tasas cruzadas a O(n) |
 | Botón refresh manual (no polling) | Las tasas no cambian segundo a segundo — preserva quota de las APIs |
+| Default USD + AED (no todas) | Foco visual; el resto se agrega con un tap si hace falta |
+| Mínimo 2 monedas visibles | Con una sola no hay nada que convertir |
+| Sin banderas ni íconos | Más rápido, más limpio, no depende de un CDN externo |
 | SW no cachea respuestas de APIs | Las tasas son datos volátiles — preferimos `localStorage` con TTL controlado |
-| `localStorage` en vez de IndexedDB | Solo guardamos 6 floats — overkill cualquier cosa más compleja |
+| `localStorage` en vez de IndexedDB | Solo guardamos 7 floats — overkill cualquier cosa más compleja |
 | Inputs `type="number"` con `inputmode="decimal"` | Teclado numérico en mobile + validación nativa |
 | Dólar **blue venta** (no oficial) | Es el valor real de mercado en Argentina |
 | Stale-while-revalidate (no network-first) | Carga instantánea desde cache + actualización en background |
+
+---
+
+## Historial
+
+| Fecha | Cambio |
+|-------|--------|
+| 2026-05-11 | Versión inicial: AED · USD · ARS (blue) · ILS |
+| 2026-05-11 | + BRL (Real brasileño) |
+| 2026-05-11 | + EUR + PWA offline (service worker + cache de tasas) |
+| 2026-07-05 | + RSD (Dinar serbio) + selector de chips por moneda |
+| 2026-07-05 | Default USD + AED al arrancar, sin banderas |
 
 ---
 
