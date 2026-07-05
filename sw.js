@@ -1,4 +1,4 @@
-const CACHE = 'cambio-moneda-v2';
+const CACHE = 'cambio-moneda-v3';
 const SHELL = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const SHELL = [
   'https://flagcdn.com/w40/ar.png',
   'https://flagcdn.com/w40/br.png',
   'https://flagcdn.com/w40/il.png',
+  'https://flagcdn.com/w40/rs.png',
   'https://reviews.mflowsuite.com/assets/mflowsuite-logo.png'
 ];
 

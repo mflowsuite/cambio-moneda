@@ -60,6 +60,50 @@
       margin-top: 6px;
     }
 
+    /* === SELECTOR (currency chips) === */
+    .selector {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 150ms ease;
+      user-select: none;
+    }
+    .chip img {
+      width: 16px;
+      height: 12px;
+      border-radius: 2px;
+      object-fit: cover;
+    }
+    .chip:hover { border-color: rgba(34,197,94,.5); color: var(--text); }
+    .chip.active {
+      background: rgba(34,197,94,.12);
+      border-color: var(--green);
+      color: var(--green);
+    }
+    .chip.active:hover { opacity: .88; }
+
+    /* Hide cards when toggled off */
+    .card.hidden { display: none; }
+
     /* === GRID === */
     .grid {
       display: grid;
@@ -221,8 +265,10 @@
 
   <header>
     <h1>cambio-<span>moneda</span></h1>
-    <p>Convertidor AED · USD · EUR · ARS (blue) · BRL · ILS</p>
+    <p>Convertidor AED · USD · EUR · ARS (blue) · BRL · ILS · RSD</p>
   </header>
+
+  <div class="selector" id="selector" role="group" aria-label="Monedas visibles"></div>
 
   <div class="grid">
 
@@ -292,6 +338,17 @@
       <p class="rate-ref" id="ref-ILS">Cargando…</p>
     </div>
 
+    <!-- RSD -->
+    <div class="card">
+      <div class="card-header">
+        <img src="https://flagcdn.com/w40/rs.png" alt="Serbia">
+        <span class="currency-label">RSD</span>
+        <span class="currency-name">Dinar</span>
+      </div>
+      <input id="input-RSD" class="currency-input" type="number" inputmode="decimal" placeholder="0" min="0" step="any">
+      <p class="rate-ref" id="ref-RSD">Cargando…</p>
+    </div>
+
   </div>
 
   <div class="actions">
@@ -327,9 +384,19 @@
 
   <script>
     // === STATE ===
-    const rates = { AED: null, USD: 1, EUR: null, ARS: null, BRL: null, ILS: null };
-    const CURRENCIES = ['AED', 'USD', 'EUR', 'ARS', 'BRL', 'ILS'];
+    const rates = { AED: null, USD: 1, EUR: null, ARS: null, BRL: null, ILS: null, RSD: null };
+    const CURRENCIES = ['AED', 'USD', 'EUR', 'ARS', 'BRL', 'ILS', 'RSD'];
+    const CURRENCY_META = {
+      AED: { flag: 'ae', name: 'Dírham' },
+      USD: { flag: 'us', name: 'Dólar' },
+      EUR: { flag: 'eu', name: 'Euro' },
+      ARS: { flag: 'ar', name: 'Peso' },
+      BRL: { flag: 'br', name: 'Real' },
+      ILS: { flag: 'il', name: 'Shekel' },
+      RSD: { flag: 'rs', name: 'Dinar' }
+    };
     const CACHE_KEY = 'cambio-moneda-rates-v1';
+    const VISIBLE_KEY = 'cambio-moneda-visible-v1';
 
     // === DOM REFS ===
     const inputs = {};
@@ -358,6 +425,7 @@
       rates.EUR = fxData.rates.EUR;
       rates.BRL = fxData.rates.BRL;
       rates.ILS = fxData.rates.ILS;
+      rates.RSD = fxData.rates.RSD;
       rates.USD = 1;
     }
 
@@ -365,7 +433,7 @@
     function saveRatesCache() {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
-          rates: { AED: rates.AED, EUR: rates.EUR, ARS: rates.ARS, BRL: rates.BRL, ILS: rates.ILS },
+          rates: { AED: rates.AED, EUR: rates.EUR, ARS: rates.ARS, BRL: rates.BRL, ILS: rates.ILS, RSD: rates.RSD },
           timestamp: Date.now()
         }));
       } catch (e) { /* ignore quota / private mode */ }
@@ -403,12 +471,13 @@
       refs.ARS.textContent = rates.ARS.toFixed(2) + ' ARS = 1 USD (blue venta)';
       refs.BRL.textContent = rates.BRL.toFixed(4) + ' BRL = 1 USD';
       refs.ILS.textContent = rates.ILS.toFixed(4) + ' ILS = 1 USD';
+      refs.RSD.textContent = rates.RSD.toFixed(2) + ' RSD = 1 USD';
     }
 
     // === INPUT HANDLERS ===
     CURRENCIES.forEach(c => {
       inputs[c].addEventListener('input', () => {
-        if (!rates.AED || !rates.EUR || !rates.ARS || !rates.BRL || !rates.ILS) return;
+        if (!rates.AED || !rates.EUR || !rates.ARS || !rates.BRL || !rates.ILS || !rates.RSD) return;
         convert(c);
       });
     });
@@ -446,7 +515,7 @@
         lastUpdateEl.textContent = 'Actualizado ' + now.toLocaleTimeString('es-AR');
       } catch (err) {
         const cachedTs = loadRatesCache();
-        if (cachedTs && rates.AED && rates.EUR && rates.ARS && rates.BRL && rates.ILS) {
+        if (cachedTs && rates.AED && rates.EUR && rates.ARS && rates.BRL && rates.ILS && rates.RSD) {
           updateRateRefs();
           const activeSource = CURRENCIES.find(c => inputs[c].value && parseFloat(inputs[c].value) > 0);
           if (activeSource) convert(activeSource);
@@ -461,6 +530,65 @@
     }
 
     btnRefresh.addEventListener('click', refresh);
+
+    // === CURRENCY SELECTOR (chips) ===
+    const cards = {};
+    CURRENCIES.forEach(c => { cards[c] = inputs[c].closest('.card'); });
+
+    let visible = loadVisible();
+
+    function loadVisible() {
+      try {
+        const raw = localStorage.getItem(VISIBLE_KEY);
+        if (!raw) return new Set(CURRENCIES);
+        const arr = JSON.parse(raw).filter(c => CURRENCIES.includes(c));
+        return new Set(arr.length >= 2 ? arr : CURRENCIES);
+      } catch (e) { return new Set(CURRENCIES); }
+    }
+    function saveVisible() {
+      try { localStorage.setItem(VISIBLE_KEY, JSON.stringify([...visible])); } catch (e) {}
+    }
+
+    function applyVisibility() {
+      CURRENCIES.forEach(c => {
+        const isVisible = visible.has(c);
+        cards[c].classList.toggle('hidden', !isVisible);
+        const chip = document.getElementById('chip-' + c);
+        if (chip) {
+          chip.classList.toggle('active', isVisible);
+          chip.setAttribute('aria-pressed', String(isVisible));
+        }
+        if (!isVisible) inputs[c].value = '';
+      });
+    }
+
+    function buildChips() {
+      const selectorEl = document.getElementById('selector');
+      CURRENCIES.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip';
+        btn.id = 'chip-' + c;
+        btn.setAttribute('aria-pressed', 'true');
+        btn.innerHTML = '<img src="https://flagcdn.com/w40/' + CURRENCY_META[c].flag + '.png" alt=""> ' + c;
+        btn.addEventListener('click', () => toggleCurrency(c));
+        selectorEl.appendChild(btn);
+      });
+    }
+
+    function toggleCurrency(c) {
+      if (visible.has(c)) {
+        if (visible.size <= 2) return; // mínimo 2 monedas visibles
+        visible.delete(c);
+      } else {
+        visible.add(c);
+      }
+      saveVisible();
+      applyVisibility();
+    }
+
+    buildChips();
+    applyVisibility();
 
     // === SERVICE WORKER (offline app shell) ===
     if ('serviceWorker' in navigator) {
