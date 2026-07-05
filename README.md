@@ -87,12 +87,21 @@ Para forzar el default, borrar la key en DevTools → Application → Local Stor
 La app funciona sin conexión gracias a tres capas:
 
 ### 1. Service Worker (`sw.js`)
-Estrategia **stale-while-revalidate** para el app shell — sirve desde cache y revalida en background. Las APIs de tasas siempre van a la red (no se cachean datos volátiles).
+
+Estrategia diferenciada por tipo de recurso:
+
+| Recurso | Estrategia | Motivo |
+|---------|------------|--------|
+| Navegación / HTML (`index.html`) | **Network-first** con fallback a cache | Que los usuarios vean SIEMPRE la última versión cuando hay red — evita quedar pegados con HTML viejo tras un deploy |
+| Fonts, logo, manifest | **Stale-while-revalidate** | Carga instantánea desde cache + actualización en background |
+| APIs (`api.bluelytics.com.ar`, `open.er-api.com`) | Sin cache (bypass) | Datos volátiles — el cache de tasas se maneja aparte con `localStorage` |
 
 Recursos cacheados al instalar:
 - `index.html`, `manifest.json`
 - Google Fonts (Fira Code, Fira Sans)
 - Logo MflowSuite
+
+**Auto-reload en update:** al detectar `controllerchange` (nuevo SW toma control), la app recarga sola para tomar el HTML/JS nuevo. Combinado con `skipWaiting()` + `clients.claim()`, los deploys llegan al usuario sin que tenga que borrar cache manualmente.
 
 ### 2. Manifest (`manifest.json`)
 Permite **instalar** la app:
@@ -228,7 +237,26 @@ Sin reintentos automáticos — el usuario usa el botón "Actualizar tasas".
 | `localStorage` en vez de IndexedDB | Solo guardamos 7 floats — overkill cualquier cosa más compleja |
 | Inputs `type="number"` con `inputmode="decimal"` | Teclado numérico en mobile + validación nativa |
 | Dólar **blue venta** (no oficial) | Es el valor real de mercado en Argentina |
-| Stale-while-revalidate (no network-first) | Carga instantánea desde cache + actualización en background |
+| Network-first para HTML, SWR para el resto | Los deploys llegan al usuario sin dos reloads; fonts/logo siguen siendo instantáneos |
+| Auto-reload en `controllerchange` | Elimina la necesidad de borrar cache tras un deploy — un pequeño flash pero garantiza consistencia |
+
+---
+
+## Troubleshooting
+
+**Los cambios de un deploy no aparecen en el celular.**
+Gracias al SW network-first + auto-reload esto ya no debería pasar. Si igual queda pegado (SW muy viejo instalado antes del fix):
+- Android Chrome: 3 puntitos → Historial → Borrar datos → "Archivos e imágenes en caché" (última hora)
+- iPhone Safari: Ajustes → Safari → Avanzado → Datos de sitios web → borrar `mflowsuite.github.io`
+
+**El selector no me deja ocultar más monedas.**
+Hay un mínimo de 2 monedas visibles — sino no hay nada que convertir.
+
+**Quiero volver al default (`USD` + `AED`).**
+DevTools → Application → Local Storage → borrar `cambio-moneda-visible-v1` y recargar.
+
+**Los inputs quedan deshabilitados.**
+La última consulta a las APIs falló y no había cache. Verificá conexión y tocá "Actualizar tasas".
 
 ---
 
@@ -241,6 +269,8 @@ Sin reintentos automáticos — el usuario usa el botón "Actualizar tasas".
 | 2026-05-11 | + EUR + PWA offline (service worker + cache de tasas) |
 | 2026-07-05 | + RSD (Dinar serbio) + selector de chips por moneda |
 | 2026-07-05 | Default USD + AED al arrancar, sin banderas |
+| 2026-07-05 | Fix TDZ en `loadVisible()` que crasheaba el primer load en mobile |
+| 2026-07-05 | SW network-first para HTML + auto-reload en `controllerchange` |
 
 ---
 
